@@ -7,7 +7,6 @@ BINARY_NAME=cmd/redis-cli
 LINUX_BINARY_NAME=cmd/redis-cli_for_linux_x86_64
 MAC_BINARY_NAME=cmd/redis-cli_for_mac_x86_64
 WINDOWS_BINARY_NAME=cmd/redis-cli_for_windows_x86_64.exe
-
 MAIN_NAME=redis-cli.go
 PKG=redis-cli
 GITHASH := $(shell git rev-parse --verify --short HEAD)

@@ -7,7 +7,6 @@ import (
 	"io"
 	"net"
 	"os"
-	"path/filepath"
 	"strconv"
 	"strings"
 	"sync"
@@ -438,16 +437,17 @@ func clusterManagerCommandBackup(argc *Usage) {
 		getRDB(node)
 	}
 	json += "\n]"
-	var jsonPath string
-	jsonPath = config.backupDir
+
 	/* TODO: check if backup_dir is a valid directory. */
-	if !filepath.IsAbs(jsonPath) {
-		jsonPath = filepath.Dir(jsonPath)
+	var jsonPath []byte
+	jsonPath = []byte(config.backupDir)
+	if jsonPath[len(jsonPath)-1] != '/' {
+		jsonPath = append(jsonPath, '/')
 	}
-	jsonPath = filepath.Join(jsonPath, "nodes.json")
-	clusterManagerLogInfo("Saving cluster configuration to: %s", jsonPath)
+	jsonFilePath := string(jsonPath) + "nodes.json"
+	clusterManagerLogInfo("Saving cluster configuration to: %s", jsonFilePath)
 	var out *os.File
-	out, err = os.OpenFile(jsonPath, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0644)
+	out, err = os.OpenFile(jsonFilePath, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0644)
 	if err != nil {
 		clusterManagerLogErr("Could not save nodes to: %s", jsonPath)
 		success = false
@@ -608,12 +608,13 @@ func sendSync(c *redisReplication) error {
 	return nil
 }
 
-func clusterManagerGetNodeRDBFilename(node *ClusterManagerNode) string {
-	var fileName string
-	fileName = config.backupDir
-	if !filepath.IsAbs(fileName) {
-		fileName = filepath.Dir(fileName)
+func clusterManagerGetNodeRDBFilename(node *ClusterManagerNode) (fullFileName string) {
+	var fileName []byte
+	fileName = []byte(config.backupDir)
+	if fileName[len(fileName)-1] != '/' {
+		fileName = append(fileName, '/')
 	}
-	fileName = filepath.Join(fileName, fmt.Sprintf("redis-node-%s-%d-%s.rdb", node.Ip, node.Port, node.Name))
-	return fileName
+
+	fullFileName = string(fileName) + fmt.Sprintf("redis-node-%s-%d-%s.rdb", node.Ip, node.Port, node.Name)
+	return
 }

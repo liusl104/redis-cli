@@ -220,7 +220,7 @@ func cliAuth(ctx redis.Conn, user string, auth string) bool {
 	if user == "" {
 		reply, err = ctx.Do("AUTH", auth)
 	} else {
-		reply, err = ctx.Do("AUTH", user, auth)
+		reply, err = ctx.Do("AUTH2", user, auth)
 	}
 	if reply == nil {
 		clusterManagerLogErr("I/O error")

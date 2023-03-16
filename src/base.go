@@ -577,8 +577,10 @@ func ParseOptions(args []string) {
 		showHelpInfo()
 	}
 	defer func() {
-		for _, node := range clusterManager.Nodes {
-			_ = node.Context.Conn.Close()
+		if clusterManager.Nodes != nil {
+			for _, node := range clusterManager.Nodes {
+				_ = node.Context.Conn.Close()
+			}
 		}
 	}()
 }

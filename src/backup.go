@@ -444,7 +444,8 @@ func clusterManagerCommandBackup(argc *Usage) {
 	if jsonPath[len(jsonPath)-1] != '/' {
 		jsonPath = append(jsonPath, '/')
 	}
-	jsonFilePath := string(jsonPath) + "nodes.json"
+	var jsonFilePath string
+	jsonFilePath = string(jsonPath) + "nodes.json"
 	clusterManagerLogInfo("Saving cluster configuration to: %s", jsonFilePath)
 	var out *os.File
 	out, err = os.OpenFile(jsonFilePath, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0644)

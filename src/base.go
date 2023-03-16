@@ -576,6 +576,11 @@ func ParseOptions(args []string) {
 	default:
 		showHelpInfo()
 	}
+	defer func() {
+		for _, node := range clusterManager.Nodes {
+			_ = node.Context.Conn.Close()
+		}
+	}()
 }
 
 // clusterManagerLogInfof 1 debug 2 info 3 war 4 error 5 fatalf

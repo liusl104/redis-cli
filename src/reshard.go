@@ -294,11 +294,7 @@ func clusterManagerMigrateKeysInSlot(source *ClusterManagerNode, target *Cluster
 			goto next
 		}
 		if err != nil {
-			if strings.Contains(err.Error(), "BUSYKEY") {
-				isBusy = true
-			} else {
-				isBusy = false
-			}
+			isBusy = strings.Contains(err.Error(), "BUSYKEY")
 			notServed = 0
 			if !isBusy {
 				/* Check if the slot is unassigned (not served) in the

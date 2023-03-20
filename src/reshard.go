@@ -290,11 +290,11 @@ func clusterManagerMigrateKeysInSlot(source *ClusterManagerNode, target *Cluster
 		}*/
 		/* Calling MIGRATE command. */
 		migrateReply, err = clusterManagerMigrateKeysInReply(source, target, reply, 0, timeout, dots)
-		if migrateReply == "" {
+		if err == nil {
 			goto next
 		}
 		if err != nil {
-			if strings.Contains(migrateReply, "BUSYKEY") {
+			if strings.Contains(err.Error(), "BUSYKEY") {
 				isBusy = true
 			} else {
 				isBusy = false
@@ -330,6 +330,7 @@ func clusterManagerMigrateKeysInSlot(source *ClusterManagerNode, target *Cluster
 				 *  - In other cases (ie. reshard), proceed only if the user
 				 *    launched the command with the --cluster-replace option.*/
 				if isBusy {
+					clusterManagerLogInfof("\n")
 					clusterManagerLogWarn("*** Target key exists")
 					if !intToBool(doReplace) {
 						clusterManagerLogWarn("*** Checking key values on both nodes...")
@@ -382,6 +383,11 @@ func clusterManagerMigrateKeysInSlot(source *ClusterManagerNode, target *Cluster
 	return 0
 }
 
+/* clusterManagerCompareKeysValues Get the hash for the values of the specified keys in *keys_reply for the
+ * specified nodes *n1 and *n2, by calling DEBUG DIGEST-VALUE redis command
+ * on both nodes. Every key with same name on both nodes but having different
+ * values will be added to the *diffs list. Return 0 in case of reply
+ * error. */
 func clusterManagerCompareKeysValues(n1 *ClusterManagerNode, n2 *ClusterManagerNode, keysReply interface{}, diffs []interface{}) int {
 	// 这个后面再看
 	return 1

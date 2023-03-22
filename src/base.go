@@ -603,6 +603,9 @@ func ParseOptions(args []string) {
 	cm := clusterManagerCommands(args)
 	config = new(clusterManagerCommand)
 	config.init(cm)
+	if cm.Password != "" {
+		clusterManagerLogWarn("Warning: Using a password with '-a' or '-u' option on the command line interface may not be safe.")
+	}
 	/* Cluster Manager commands. */
 	switch {
 	case cm.Info != "":

@@ -1,11 +1,10 @@
 
 # redis-cli
 
-本项目是基于redis 6.2.7 源代码使用go改写，实现redis-cli --cluster 所有功能
+This project is rewritten based on redis 6.2.7 source code using go to realize all functions of redis-cli --cluster
+## Install and build
 
-## 安装与编译
-
-使用 shell 安装 redis-cli
+Install `redis-cli` using the shell
 
 ```bash
   git clone https://github.com/liusl104/redis-cli.git
@@ -14,7 +13,7 @@
 
 ```
 
-## 帮助
+## Help
 
 ```shell
 cd redis-cli
@@ -84,28 +83,28 @@ Cluster Manager Options:
 ```
 
 
-## 特性
+## Characteristic
 
-- 支持跨平台 mac、linux、windows、arm
-
-
-
-## 文档
-
-[redis 文档](https://redis.io/docs)
-
-[redis 命令](https://redis.io/commands/)
-
-[redis 源码](https://github.com/redis/redis/tree/6.2)
-## 技术栈
-
-**开发版本:** go 1.19
+- Support multiple platforms (mac、linux、windows、arm)
 
 
 
-## 运行测试
+## Doc
 
-要运行测试，运行以下命令
+[Redis Docs](https://redis.io/docs)
+
+[Redis Commands](https://redis.io/commands/)
+
+[Redis Source Codes](https://github.com/redis/redis/tree/6.2)
+## Development stack
+
+**Development Version:** go 1.19
+
+
+
+## Run and Test 
+
+To run the test, execute the following command
 
 ```bash
 $ ./cmd/redis-cli --check 127.0.0.1:6380 -a 123456
@@ -142,12 +141,11 @@ S: cdc018d943bf57bcf0d6389e2532a72752c6a8ff 127.0.0.1:6381
 ```
 
 
-## 作者
+## Author
 
 - [@liusl104](https://github.com/liusl104)
 
 
-## 反馈
+## Feedback
 
-如果你有任何反馈，请联系我们：liusl104@gmail.com,也可以直接提交issues
-
+If you have any feedback, please contact us: liusl104@gmail.com, you can also submit issues directly

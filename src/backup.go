@@ -77,7 +77,7 @@ func (r *redisReplication) fatal(err error) error {
 		r.err = err
 		// Close connection to force errors on subsequent calls and to unblock
 		// other reader or writer.
-		r.conn.Close()
+		_ = r.conn.Close()
 	}
 	r.mu.Unlock()
 	return err
@@ -99,15 +99,15 @@ func (r *redisReplication) writeLen(prefix byte, n int) error {
 	return err
 }
 func (r *redisReplication) writeString(s string) error {
-	r.writeLen('$', len(s))
-	r.bw.WriteString(s)
+	_ = r.writeLen('$', len(s))
+	_, _ = r.bw.WriteString(s)
 	_, err := r.bw.WriteString("\r\n")
 	return err
 }
 
 func (r *redisReplication) writeBytes(p []byte) error {
-	r.writeLen('$', len(p))
-	r.bw.Write(p)
+	_ = r.writeLen('$', len(p))
+	_, _ = r.bw.Write(p)
 	_, err := r.bw.WriteString("\r\n")
 	return err
 }
@@ -146,20 +146,20 @@ func (r *redisReplication) writeArg(arg interface{}, argumentTypeOK bool) (err e
 		}
 		// See comment in default clause below.
 		var buf bytes.Buffer
-		fmt.Fprint(&buf, arg)
+		_, _ = fmt.Fprint(&buf, arg)
 		return r.writeBytes(buf.Bytes())
 	default:
 		// This default clause is intended to handle builtin numeric types.
 		// The function should return an error for other types, but this is not
 		// done for compatibility with previous versions of the package.
 		var buf bytes.Buffer
-		fmt.Fprint(&buf, arg)
+		_, _ = fmt.Fprint(&buf, arg)
 		return r.writeBytes(buf.Bytes())
 	}
 }
 
 func (r *redisReplication) writeCommand(cmd string, args []interface{}) error {
-	r.writeLen('*', 1+len(args))
+	_ = r.writeLen('*', 1+len(args))
 	if err := r.writeString(cmd); err != nil {
 		return err
 	}
@@ -177,7 +177,7 @@ func (r *redisReplication) send(cmd string, args ...interface{}) error {
 	r.pending += 1
 	r.mu.Unlock()
 	if r.writeTimeout != 0 {
-		r.conn.SetWriteDeadline(time.Now().Add(r.writeTimeout))
+		_ = r.conn.SetWriteDeadline(time.Now().Add(r.writeTimeout))
 	}
 	if err := r.writeCommand(cmd, args); err != nil {
 		return r.fatal(err)
@@ -188,7 +188,7 @@ func (r *redisReplication) send(cmd string, args ...interface{}) error {
 // Flush flushes the output buffer to the Redis server.
 func (r *redisReplication) flush() error {
 	if r.writeTimeout != 0 {
-		r.conn.SetWriteDeadline(time.Now().Add(r.writeTimeout))
+		_ = r.conn.SetWriteDeadline(time.Now().Add(r.writeTimeout))
 	}
 	if err := r.bw.Flush(); err != nil {
 		return r.fatal(err)
@@ -223,7 +223,7 @@ func (r *redisReplication) readReply() (interface{}, error) {
 			return string(line[1:]), nil
 		}
 	case '-':
-		return Error(string(line[1:])), nil
+		return Error(line[1:]), nil
 	case ':':
 		return parseInt(line[1:])
 	case '$':
@@ -477,7 +477,9 @@ func (r *redisReplication) ProcessRdb(br io.Reader, n int64) (err error) {
 	if err != nil {
 		return err
 	}
-	defer file.Close()
+	defer func() {
+		_ = file.Close()
+	}()
 	_, err = io.CopyN(file, br, n)
 
 	return err
@@ -586,7 +588,7 @@ func sendSync(c *redisReplication) error {
 		lineSplit := strings.Split(string(line[1:]), " ")
 		if lineSplit[0] == "FULLRESYNC" {
 			c.masterRunId = lineSplit[1]
-			offset, _ := strconv.ParseInt(string(lineSplit[2]), 10, 64)
+			offset, _ := strconv.ParseInt(lineSplit[2], 10, 64)
 			c.setOffset(offset)
 			for {
 				line, err = c.readLine()

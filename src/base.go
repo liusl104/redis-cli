@@ -173,6 +173,8 @@ type Usage struct {
 	ShowLog                          bool    `json:"show_log,omitempty"`
 	Verbose                          bool    `json:"verbose,omitempty"`
 	ClusterMoveThread                int     `json:"cluster_move_thread"`
+	AskPass                          bool    `json:"ask_pass"`
+	NoAuthWarning                    bool    `json:"no_auth_warning"`
 	// Tls                              bool    `json:"tls,omitempty"`
 }
 
@@ -301,6 +303,10 @@ func (c *clusterManagerCommand) init(args *Usage) {
 	if args.ClusterFromAskPass {
 		fmt.Printf("Please input import source node password: ")
 		_, _ = fmt.Scanln(&c.fromPass)
+	}
+	if args.AskPass {
+		fmt.Printf("Please input cluster node password: ")
+		_, _ = fmt.Scanln(&args.Password)
 	}
 	c.verbose = args.Verbose
 
@@ -437,6 +443,9 @@ Cluster Manager Options:
                      (if both are used, this argument takes precedence).
   --user <username>  Used to send ACL style 'AUTH username pass'. Needs -a.
   --pass <password>  Alias of -a for consistency with the new --user option.
+  --no-auth-warning  Don't show warning message when using password on command
+                     line interface.
+  --ask-pass         Manually enter the cluster password
 
 `
 	fmt.Printf(info)
@@ -582,6 +591,8 @@ func clusterManagerCommands(Args []string) (managerCommand *Usage) {
 	flag.StringVar(&managerCommand.ClusterFromUser, "cluster-from-user", "", "<arg>")
 	flag.StringVar(&managerCommand.ClusterFromPass, "cluster-from-pass", "", "<arg>")
 	flag.BoolVar(&managerCommand.ClusterFromAskPass, "cluster-from-askpass", false, "")
+	flag.BoolVar(&managerCommand.AskPass, "ask-pass", false, "")
+	flag.BoolVar(&managerCommand.NoAuthWarning, "no-auth-warning", false, "")
 	flag.BoolVar(&managerCommand.ClusterCopy, "cluster-copy", false, "")
 	flag.StringVar(&managerCommand.Backup, "backup", "", "host:port")
 	flag.StringVar(&managerCommand.BackupDirectory, "backup-directory", ".", "<arg>")
@@ -609,8 +620,10 @@ func ParseOptions(args []string) {
 	cm := clusterManagerCommands(args)
 	config = new(clusterManagerCommand)
 	config.init(cm)
-	if cm.Password != "" {
-		clusterManagerLogWarn("Warning: Using a password with '-a' or '-u' option on the command line interface may not be safe.")
+	if cm.Password != "" && !cm.AskPass {
+		if !cm.NoAuthWarning {
+			clusterManagerLogWarn("Warning: Using a password with '-a' or '-u' option on the command line interface may not be safe.")
+		}
 	}
 	/* Cluster Manager commands. */
 	switch {

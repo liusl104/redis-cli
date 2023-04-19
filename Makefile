@@ -1,5 +1,9 @@
 # Go parameters
 GOCMD=go
+GOOS    := $(if $(GOOS),$(GOOS),$(shell go env GOOS))
+GOARCH  := $(if $(GOARCH),$(GOARCH),$(shell go env GOARCH))
+GOENV   := GO111MODULE=on CGO_ENABLED=0 GOOS=$(GOOS) GOARCH=$(GOARCH)
+GO      := $(GOENV) go
 GOBUILD=$(GOCMD) build
 GOCLEAN=$(GOCMD) clean
 GOGET=$(GOCMD) mod
@@ -12,12 +16,19 @@ PKG=redis-cli
 GITHASH := $(shell git rev-parse --verify --short HEAD)
 LDFLAGS += -X "$(PKG)/src.GitHash=$(GITHASH)"
 
-all: build
+all: build linux windows darwin
+
+linux:
+	CGO_ENABLED=0 GOOS=linux GOARCH=$(GOARCH) $(GOBUILD)  -ldflags '$(LDFLAGS) -s -w'  -o $(LINUX_BINARY_NAME)  $(MAIN_NAME)
+
+windows:
+	CGO_ENABLED=0 GOOS=windows GOARCH=$(GOARCH) $(GOBUILD)  -ldflags '$(LDFLAGS) -s -w'  -o $(WINDOWS_BINARY_NAME)  $(MAIN_NAME)
+
+darwin:
+	CGO_ENABLED=0 GOOS=darwin GOARCH=$(GOARCH) $(GOBUILD)  -ldflags '$(LDFLAGS) -s -w'  -o $(MAC_BINARY_NAME)  $(MAIN_NAME)
+
 build:
 	$(GOBUILD)  -ldflags '$(LDFLAGS) -s -w'  -o $(BINARY_NAME)  $(MAIN_NAME)
-	CGO_ENABLED=0 GOOS=linux GOARCH=amd64 $(GOBUILD)  -ldflags '$(LDFLAGS) -s -w'  -o $(LINUX_BINARY_NAME)  $(MAIN_NAME) &\
- CGO_ENABLED=0 GOOS=windows GOARCH=amd64 $(GOBUILD)  -ldflags '$(LDFLAGS) -s -w'  -o $(WINDOWS_BINARY_NAME)  $(MAIN_NAME) &\
-  CGO_ENABLED=0 GOOS=darwin GOARCH=amd64 $(GOBUILD)  -ldflags '$(LDFLAGS) -s -w'  -o $(MAC_BINARY_NAME)  $(MAIN_NAME)
 
 mod:
 	$(GOCMD) mod tidy

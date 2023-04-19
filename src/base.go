@@ -172,6 +172,7 @@ type Usage struct {
 	Password                         string  `json:"password,omitempty"`
 	ShowLog                          bool    `json:"show_log,omitempty"`
 	Verbose                          bool    `json:"verbose,omitempty"`
+	ClusterMoveThread                int     `json:"cluster_move_thread"`
 	// Tls                              bool    `json:"tls,omitempty"`
 }
 
@@ -255,33 +256,34 @@ type ClusterManager struct {
 }
 
 type clusterManagerCommand struct {
-	name        string
-	argc        int
-	argv        int
-	flags       int
-	replicas    int
-	from        string
-	to          string
-	weight      string
-	weightArgc  int
-	masterId    string
-	slots       int
-	timeout     int
-	pipeline    int
-	threshold   float64
-	backupDir   string
-	fromUser    string
-	fromPass    string
-	fromAskPass int
-	logLevel    int
-	auth        string
-	user        string
-	tls         bool
-	sslConfig   *cliSSLConfig
-	verbose     bool
-	simulate    bool
-	rdbFileName string
-	getRdbMode  bool
+	name          string
+	argc          int
+	argv          int
+	flags         int
+	replicas      int
+	from          string
+	to            string
+	weight        string
+	weightArgc    int
+	masterId      string
+	slots         int
+	timeout       int
+	pipeline      int
+	threshold     float64
+	backupDir     string
+	fromUser      string
+	fromPass      string
+	fromAskPass   int
+	logLevel      int
+	auth          string
+	user          string
+	tls           bool
+	sslConfig     *cliSSLConfig
+	verbose       bool
+	simulate      bool
+	rdbFileName   string
+	getRdbMode    bool
+	clusterThread int
 }
 
 func (c *clusterManagerCommand) init(args *Usage) {
@@ -355,6 +357,7 @@ func (c *clusterManagerCommand) init(args *Usage) {
 	config.fromAskPass = 1
 	config.auth = args.Password
 	config.user = args.User
+	config.clusterThread = args.ClusterMoveThread
 	if args.Version {
 		var version string
 		version = cliVersion()
@@ -389,6 +392,7 @@ func showHelpInfo() {
                    --cluster-timeout <arg>
                    --cluster-pipeline <arg>
                    --cluster-replace
+                   --cluster-move-thread <arg>
   --rebalance      host:port
                    --cluster-weight <node1=w1...nodeN=wN>
                    --cluster-use-empty-masters
@@ -397,6 +401,7 @@ func showHelpInfo() {
                    --cluster-pipeline <arg>
                    --cluster-threshold <arg>
                    --cluster-replace
+                   --cluster-move-thread <arg>
   --add-node       new_host:new_port 
                    --exist-node existing_host:existing_port
                    --cluster-slave
@@ -582,6 +587,7 @@ func clusterManagerCommands(Args []string) (managerCommand *Usage) {
 	flag.StringVar(&managerCommand.BackupDirectory, "backup-directory", ".", "<arg>")
 	flag.BoolVar(&managerCommand.Help, "help", false, "")
 	flag.BoolVar(&managerCommand.Version, "version", false, "")
+	flag.IntVar(&managerCommand.ClusterMoveThread, "cluster-move-thread", 1, "<arg>")
 	flag.StringVar(&managerCommand.User, "user", "", "Used to send ACL style 'AUTH username pass'. Needs -a.")
 	flag.StringVar(&managerCommand.User, "u", "", "Used to send ACL style 'AUTH username pass'. Needs -a.")
 	flag.StringVar(&managerCommand.Password, "a", "", "Password to use when connecting to the server.")

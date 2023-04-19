@@ -15,7 +15,9 @@ LDFLAGS += -X "$(PKG)/src.GitHash=$(GITHASH)"
 all: build
 build:
 	$(GOBUILD)  -ldflags '$(LDFLAGS) -s -w'  -o $(BINARY_NAME)  $(MAIN_NAME)
-	CGO_ENABLED=0 GOOS=linux GOARCH=amd64 $(GOBUILD)  -ldflags '$(LDFLAGS) -s -w'  -o $(LINUX_BINARY_NAME)  $(MAIN_NAME) & CGO_ENABLED=0 GOOS=windows GOARCH=amd64 $(GOBUILD)  -ldflags '$(LDFLAGS) -s -w'  -o $(WINDOWS_BINARY_NAME)  $(MAIN_NAME) & CGO_ENABLED=0 GOOS=darwin GOARCH=amd64 $(GOBUILD)  -ldflags '$(LDFLAGS) -s -w'  -o $(MAC_BINARY_NAME)  $(MAIN_NAME)
+	CGO_ENABLED=0 GOOS=linux GOARCH=amd64 $(GOBUILD)  -ldflags '$(LDFLAGS) -s -w'  -o $(LINUX_BINARY_NAME)  $(MAIN_NAME) &\
+ CGO_ENABLED=0 GOOS=windows GOARCH=amd64 $(GOBUILD)  -ldflags '$(LDFLAGS) -s -w'  -o $(WINDOWS_BINARY_NAME)  $(MAIN_NAME) &\
+  CGO_ENABLED=0 GOOS=darwin GOARCH=amd64 $(GOBUILD)  -ldflags '$(LDFLAGS) -s -w'  -o $(MAC_BINARY_NAME)  $(MAIN_NAME)
 
 mod:
 	$(GOCMD) mod tidy

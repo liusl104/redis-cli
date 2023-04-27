@@ -445,7 +445,9 @@ Cluster Manager Options:
   --pass <password>  Alias of -a for consistency with the new --user option.
   --no-auth-warning  Don't show warning message when using password on command
                      line interface.
-  --ask-pass         Manually enter the cluster password
+  --askpass          Force user to input password with mask from STDIN.
+                     If this argument is used, '-a' and REDISCLI_AUTH
+                     environment variable will be ignored.
 
 `
 	fmt.Printf(info)
@@ -653,10 +655,8 @@ func ParseOptions(args []string) {
 				if s == '=' {
 					break
 				}
-
 			}
 		}
-
 		clusterManagerCommandRebalance(cm)
 	case cm.Backup != "":
 		clusterManagerCommandBackup(cm)
@@ -670,7 +670,6 @@ func ParseOptions(args []string) {
 		}
 		clusterManagerCommandDeleteNode(cm)
 	case cm.AddNode != "":
-
 		clusterManagerCommandAddNode(cm)
 	default:
 		showHelpInfo()

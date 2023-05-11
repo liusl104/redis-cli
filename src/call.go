@@ -38,7 +38,7 @@ func clusterManagerCommandCall(argc *Usage) {
 		var reply string
 		reply, err = n.Context.Do(command[0].(string), command[1:]...)
 		if err != nil {
-			clusterManagerLogErr("%s:%d: Failed!", n.Ip, n.Port)
+			clusterManagerLogErr("%s:%d: %s", n.Ip, n.Port, err.Error())
 		} else {
 			clusterManagerLogInfo("%s:%d: %s", n.Ip, n.Port, reply)
 		}

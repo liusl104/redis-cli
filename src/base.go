@@ -593,7 +593,7 @@ func clusterManagerCommands(Args []string) (managerCommand *Usage) {
 	flag.StringVar(&managerCommand.ClusterFromUser, "cluster-from-user", "", "<arg>")
 	flag.StringVar(&managerCommand.ClusterFromPass, "cluster-from-pass", "", "<arg>")
 	flag.BoolVar(&managerCommand.ClusterFromAskPass, "cluster-from-askpass", false, "")
-	flag.BoolVar(&managerCommand.AskPass, "ask-pass", false, "")
+	flag.BoolVar(&managerCommand.AskPass, "askpass", false, "")
 	flag.BoolVar(&managerCommand.NoAuthWarning, "no-auth-warning", false, "")
 	flag.BoolVar(&managerCommand.ClusterCopy, "cluster-copy", false, "")
 	flag.StringVar(&managerCommand.Backup, "backup", "", "host:port")

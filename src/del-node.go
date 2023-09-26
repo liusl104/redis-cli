@@ -33,6 +33,7 @@ func clusterManagerCommandDeleteNode(argc *Usage) {
 	}
 	// Send CLUSTER FORGET to all the nodes but the node to remove
 	clusterManagerLogInfo(">>> Sending CLUSTER FORGET messages to the cluster...")
+	var r string
 	for _, n := range clusterManager.Nodes {
 		if n == node {
 			continue
@@ -52,7 +53,6 @@ func clusterManagerCommandDeleteNode(argc *Usage) {
 				return
 			}
 		}
-		var r string
 		r, err = redis.String(n.Context.Do("CLUSTER", "FORGET", nodeId))
 		if err != nil {
 			return
@@ -60,7 +60,12 @@ func clusterManagerCommandDeleteNode(argc *Usage) {
 		if strings.ToLower(r) != "ok" {
 			return
 		}
-
+	}
+	/* Finally send CLUSTER RESET to the node. */
+	clusterManagerLogInfo(">>> Sending CLUSTER RESET SOFT to the deleted node.")
+	r, err = redis.String(node.Context.Do("CLUSTER", "RESET", "SOFT"))
+	if err != nil {
+		return
 	}
 }
 

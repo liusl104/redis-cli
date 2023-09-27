@@ -93,7 +93,6 @@ func clusterManagerCommandCreate(argc *Usage) {
 	interleaved := make([]*ClusterManagerNode, nodeLen)
 	ips := make([]string, 0)
 	ipNodes := make([]*clusterManagerNodeArray, nodeLen)
-	var ipNodesOffset int
 	// init ipNodes
 	for x := 0; x < nodeLen; x++ {
 		ipNodes[x] = new(clusterManagerNodeArray)
@@ -114,20 +113,28 @@ func clusterManagerCommandCreate(argc *Usage) {
 		}
 		nodeArray := ipNodes[i]
 		if nodeArray.Nodes == nil {
-			nodeArray = clusterManagerNodeArrayInit(nodeArray, nodeLen)
+			clusterManagerNodeArrayInit(nodeArray, nodeLen)
 		}
-		nodeArray = clusterManagerNodeArrayAdd(nodeArray, n)
+		clusterManagerNodeArrayAdd(nodeArray, n)
+		ipNodes[i] = nodeArray
 	}
+	var previousNode *ClusterManagerNode
 	for interleavedLen < nodeLen {
 		for i = 0; i < ipCount; i++ {
-			nodeArray := ipNodes[i]
-			if nodeArray.Count > 0 {
-				var n *ClusterManagerNode
-				n, err = clusterManagerNodeArrayShift(nodeArray, n, interleavedLen)
-				if err != nil {
-					return
+			if ipNodes[i].Count > 0 {
+				var n []*ClusterManagerNode
+				n = clusterManagerNodeArrayShift(ipNodes[i])
+				if previousNode == nil {
+					previousNode = n[0]
+					interleaved[interleavedLen] = n[0]
+				} else {
+					if n[0] != previousNode {
+						interleaved[interleavedLen] = n[0]
+						previousNode = n[0]
+					} else {
+						interleaved[interleavedLen] = n[interleavedLen]
+					}
 				}
-				interleaved[interleavedLen] = n
 				interleavedLen++
 			}
 		}
@@ -238,11 +245,9 @@ assignReplicas:
 	for i = 0; i < ipCount; i++ {
 		// nodeArray := ipNodes.Nodes[i]
 		// nodeArray := ipNodes + i
-		ipNodesOffset += i
-		nodeArray := ipNodes[ipNodesOffset]
-		nodeArray = clusterManagerNodeArrayReset(nodeArray)
+		clusterManagerNodeArrayReset(ipNodes[i])
 	}
-	clusterManagerOptimizeAntiAffinity(ipNodes[ipNodesOffset:], ipCount)
+	clusterManagerOptimizeAntiAffinity(ipNodes, ipCount)
 	clusterManagerShowNodes()
 	var ignoreForce int
 	if intToBool(confirmWithYes("Can I set the above configuration?", ignoreForce)) {
@@ -751,24 +756,23 @@ func clusterManagerGetAntiAffinityScore(ipNodes []*clusterManagerNodeArray, ipCo
 }
 
 /* clusterManagerNodeArrayShift Shift array->nodes and store the shifted node into 'nodeptr'. */
-func clusterManagerNodeArrayShift(array *clusterManagerNodeArray, nodePtr *ClusterManagerNode, i int) (*ClusterManagerNode, error) {
-	if !(array.Len > 0) {
-		return nil, fmt.Errorf("array len 0")
+func clusterManagerNodeArrayShift(array *clusterManagerNodeArray) (nodePtr []*ClusterManagerNode) {
+	if array.Len > 0 {
+		/* If the first node to be shifted is not NULL, decrement count. */
+		if array.Nodes != nil {
+			array.Count--
+		}
+		/* Store the first node to be shifted into 'nodeptr'. */
+		nodePtr = array.Nodes
+		/* Shift the nodes array and decrement length. */
+		// array.NodesOffset++
+		array.Len--
+		array.NodesOffset++
 	}
-
-	/* If the first node to be shifted is not NULL, decrement count. */
-	if array.Nodes != nil {
-		array.Count--
-	}
-	/* Store the first node to be shifted into 'nodeptr'. */
-	nodePtr = array.Nodes[i]
-	/* Shift the nodes array and decrement length. */
-	// array.NodesOffset++
-	array.Len--
-	array.NodesOffset++
-	return nodePtr, nil
+	return
 }
-func clusterManagerNodeArrayInit(array *clusterManagerNodeArray, allocLen int) *clusterManagerNodeArray {
+
+func clusterManagerNodeArrayInit(array *clusterManagerNodeArray, allocLen int) {
 	if array == nil {
 		array = new(clusterManagerNodeArray)
 	}
@@ -776,14 +780,20 @@ func clusterManagerNodeArrayInit(array *clusterManagerNodeArray, allocLen int) *
 	array.Allocation = array.Nodes
 	array.Len = allocLen
 	array.Count = 0
-	return array
+	return
 }
 
-func clusterManagerNodeArrayAdd(array *clusterManagerNodeArray, node *ClusterManagerNode) *clusterManagerNodeArray {
+func clusterManagerNodeArrayAdd(array *clusterManagerNodeArray, node *ClusterManagerNode) {
 	//count := array.Count
-	array.Nodes[array.Count] = node
-	array.Count++
-	return array
+	if array.Len > 0 {
+		if node != nil {
+			if array.Count < array.Len {
+				array.Nodes[array.Count] = node
+				array.Count++
+			}
+		}
+	}
+	return
 }
 func clusterManagerMastersCount(nodes, replicas int) int {
 	return nodes / (replicas + 1)

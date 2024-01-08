@@ -2,6 +2,7 @@ package redis_cli
 
 import (
 	"fmt"
+	"github.com/siddontang/go-log/log"
 	"math"
 	"math/rand"
 	"strconv"
@@ -11,12 +12,10 @@ import (
 
 /* Data structure used to represent a sequence of cluster Nodes. */
 type clusterManagerNodeArray struct {
-	Nodes            []*ClusterManagerNode
-	NodesOffset      int
-	Allocation       []*ClusterManagerNode
-	AllocationOffset int
-	Len              int
-	Count            int
+	Nodes      []*ClusterManagerNode
+	Allocation []*ClusterManagerNode
+	Len        int
+	Count      int
 }
 
 func clusterManagerPrintReplyError(n *ClusterManagerNode, err error) {
@@ -91,13 +90,14 @@ func clusterManagerCommandCreate(argc *Usage) {
 	clusterManagerLogInfo(">>> Performing hash slots allocation on %d nodes...", nodeLen)
 	var interleavedLen, ipCount int
 	interleaved := make([]*ClusterManagerNode, nodeLen)
-	ips := make([]string, 0)
-	ipNodes := make([]*clusterManagerNodeArray, nodeLen)
-	// init ipNodes
-	for x := 0; x < nodeLen; x++ {
-		ipNodes[x] = new(clusterManagerNodeArray)
-	}
 
+	ips := make([]string, nodeLen)
+	ipNodes := make([]*clusterManagerNodeArray, nodeLen)
+	for u := 0; u < nodeLen; u++ {
+		// need init memory alloc
+		interleaved[u] = new(ClusterManagerNode)
+		ipNodes[u] = new(clusterManagerNodeArray)
+	}
 	for _, n := range clusterManager.Nodes {
 		var found int
 		for i = 0; i < ipCount; i++ {
@@ -108,43 +108,34 @@ func clusterManagerCommandCreate(argc *Usage) {
 			}
 		}
 		if !intToBool(found) {
-			ips = append(ips, n.Ip)
+			ips[ipCount] = n.Ip
 			ipCount++
 		}
-		nodeArray := ipNodes[i]
+		var nodeArray *clusterManagerNodeArray
+		nodeArray = ipNodes[i]
 		if nodeArray.Nodes == nil {
 			clusterManagerNodeArrayInit(nodeArray, nodeLen)
 		}
 		clusterManagerNodeArrayAdd(nodeArray, n)
-		ipNodes[i] = nodeArray
 	}
-	var previousNode *ClusterManagerNode
 	for interleavedLen < nodeLen {
 		for i = 0; i < ipCount; i++ {
-			if ipNodes[i].Count > 0 {
-				var n []*ClusterManagerNode
-				n = clusterManagerNodeArrayShift(ipNodes[i])
-				if previousNode == nil {
-					previousNode = n[0]
-					interleaved[interleavedLen] = n[0]
-				} else {
-					if n[0] != previousNode {
-						interleaved[interleavedLen] = n[0]
-						previousNode = n[0]
-					} else {
-						interleaved[interleavedLen] = n[interleavedLen]
-					}
-				}
+			var nodeArray *clusterManagerNodeArray
+			nodeArray = ipNodes[i]
+			if nodeArray.Count > 0 {
+				var n *ClusterManagerNode
+				clusterManagerNodeArrayShift(nodeArray, &n)
+				interleaved[interleavedLen] = n
 				interleavedLen++
 			}
 		}
 	}
 	var masters []*ClusterManagerNode
 	masters = interleaved
-	var interleavedOffset int
-	interleavedOffset += mastersCount
+	interleaved = interleaved[mastersCount:]
 	interleavedLen -= mastersCount
-	slotsPerNode := float64(ClusterManagerSlots) / float64(mastersCount)
+	var slotsPerNode float64
+	slotsPerNode = float64(ClusterManagerSlots) / float64(mastersCount)
 	var first int
 	var cursor float64
 	for i = 0; i < mastersCount; i++ {
@@ -172,24 +163,22 @@ func clusterManagerCommandCreate(argc *Usage) {
 	/* Rotating the list sometimes helps to get better initial
 	 * anti-affinity before the optimizer runs. */
 	var firstNode *ClusterManagerNode
-	if interleavedOffset >= len(interleaved) {
-		interleavedOffset = 0
+	if len(interleaved) > 0 {
+		firstNode = interleaved[0]
 	}
-	firstNode = interleaved[interleavedOffset:][0]
-	masters = nil
-	for _, node := range interleaved {
-		masters = append(masters, node)
+	for i = 0; i < (interleavedLen - 1); i++ {
+		interleaved[i] = interleaved[i+1]
+	}
+	if len(interleaved)-1 > 0 {
+		interleaved[len(interleaved)-1] = firstNode
 	}
 
-	for i = 0; i < (interleavedLen - 1); i++ {
-		interleaved[interleavedOffset:][i] = interleaved[interleavedOffset:][i+1]
-	}
-	interleaved[len(interleaved)-1] = firstNode
 	var assignUnused, availableCount int
 	availableCount = interleavedLen
 assignReplicas:
 	for i = 0; i < mastersCount; i++ {
-		master := masters[i]
+		var master *ClusterManagerNode
+		master = masters[i]
 		var assignedReplicas int
 		for assignedReplicas < replicas {
 			if availableCount == 0 {
@@ -199,7 +188,8 @@ assignReplicas:
 			var firstNodeIdx int
 			firstNodeIdx = -1
 			for j = 0; j < interleavedLen; j++ {
-				n := interleaved[j]
+				var n *ClusterManagerNode
+				n = interleaved[j]
 				if n == nil {
 					continue
 				}
@@ -215,10 +205,9 @@ assignReplicas:
 			if found != nil {
 				slave = found
 			} else if firstNodeIdx >= 0 {
-				slave = interleaved[interleavedOffset:][firstNodeIdx]
+				slave = interleaved[firstNodeIdx]
 				interleavedLen -= len(interleaved) - (len(interleaved) + firstNodeIdx)
-				interleavedOffset += firstNodeIdx + 1
-				// interleaved += firstNodeIdx+1
+				interleaved = interleaved[firstNodeIdx+1:]
 			}
 			if slave != nil {
 				assignedReplicas++
@@ -243,9 +232,9 @@ assignReplicas:
 		goto assignReplicas
 	}
 	for i = 0; i < ipCount; i++ {
-		// nodeArray := ipNodes.Nodes[i]
-		// nodeArray := ipNodes + i
-		clusterManagerNodeArrayReset(ipNodes[i])
+		var nodeArray *clusterManagerNodeArray
+		nodeArray = ipNodes[i]
+		clusterManagerNodeArrayReset(nodeArray)
 	}
 	clusterManagerOptimizeAntiAffinity(ipNodes, ipCount)
 	clusterManagerShowNodes()
@@ -334,8 +323,8 @@ assignReplicas:
 
 /*clusterManagerNodeArrayReset Reset array->nodes to the original array allocation and re-count non-NULL  nodes. */
 func clusterManagerNodeArrayReset(array *clusterManagerNodeArray) *clusterManagerNodeArray {
-	if array.NodesOffset > array.AllocationOffset {
-		array.Len = array.NodesOffset - array.AllocationOffset
+	if len(array.Nodes) > len(array.Allocation) {
+		array.Len = len(array.Nodes) - len(array.Allocation)
 		array.Nodes = array.Allocation
 		array.Count = 0
 		for i := 0; i < array.Len; i++ {
@@ -572,9 +561,9 @@ func clusterManagerOptimizeAntiAffinity(ipNode []*clusterManagerNodeArray, ipCou
 	// rand.Seed(time.Now().Unix())
 	for maxIter > 0 {
 		var offendingLen int
-		//if offenders != nil {
-		offenders = make([]*ClusterManagerNode, 0)
-		// }
+		if offenders != nil {
+			offenders = nil
+		}
 		score = clusterManagerGetAntiAffinityScore(ipNode, ipCount, &offenders, &offendingLen)
 		if score == 0 || offendingLen == 0 {
 			// Optimal anti affinity reached
@@ -583,15 +572,12 @@ func clusterManagerOptimizeAntiAffinity(ipNode []*clusterManagerNodeArray, ipCou
 		/* We'll try to randomly swap a slave's assigned master causing
 		 * an affinity problem with another random slave, to see if we
 		 * can improve the affinity. */
-		var first *ClusterManagerNode
+
 		var randIdx int
-		for {
-			randIdx = rand.Int() % offendingLen
-			first = offenders[randIdx]
-			if first != nil {
-				break
-			}
-		}
+
+		randIdx = rand.Int() % offendingLen
+		var first *ClusterManagerNode
+		first = offenders[randIdx]
 		var second *ClusterManagerNode
 		otherReplicas := make([]*ClusterManagerNode, nodeLen-1)
 		var otherReplicasCount int
@@ -606,19 +592,19 @@ func clusterManagerOptimizeAntiAffinity(ipNode []*clusterManagerNodeArray, ipCou
 		}
 		randIdx = rand.Int() % otherReplicasCount
 		second = otherReplicas[randIdx]
-		firstMaster := first.Replicate
-		secondMaster := second.Replicate
-		first.Replicate = secondMaster
+		firstMaster := &first.Replicate
+		secondMaster := &second.Replicate
+		first.Replicate = *secondMaster
 		first.Dirty = 1
-		second.Replicate = firstMaster
+		second.Replicate = *firstMaster
 		second.Dirty = 1
 		newScore := clusterManagerGetAntiAffinityScore(ipNode, ipCount, nil, nil)
 		/* If the change actually makes thing worse, revert. Otherwise
 		 * leave as it is because the best solution may need a few
 		 * combined swaps. */
 		if newScore > score {
-			first.Replicate = firstMaster
-			second.Replicate = secondMaster
+			first.Replicate = *firstMaster
+			second.Replicate = *secondMaster
 		}
 		maxIter--
 	}
@@ -680,7 +666,6 @@ func clusterManagerGetAntiAffinityScore(ipNodes []*clusterManagerNodeArray, ipCo
 	var score, i, j, nodeLen int
 	nodeLen = len(clusterManager.Nodes)
 	var offendingP []*ClusterManagerNode
-	var offendingPIdx int
 	if offending != nil {
 		*offending = make([]*ClusterManagerNode, nodeLen)
 		offendingP = *offending
@@ -689,11 +674,13 @@ func clusterManagerGetAntiAffinityScore(ipNodes []*clusterManagerNodeArray, ipCo
 	 * related nodes (masters and slaves which are involved in
 	 * replication of each other) */
 	for i = 0; i < ipCount; i++ {
-		nodeArray := ipNodes[i]
+		var nodeArray *clusterManagerNodeArray
+		nodeArray = ipNodes[i]
 		related := make(map[string]string, 0)
 		var ip string
 		for j = 0; j < nodeArray.Len; j++ {
-			node := nodeArray.Nodes[j]
+			var node *ClusterManagerNode
+			node = nodeArray.Nodes[j]
 			if node == nil {
 				continue
 			}
@@ -702,14 +689,14 @@ func clusterManagerGetAntiAffinityScore(ipNodes []*clusterManagerNodeArray, ipCo
 			}
 			/* We always use the Master ID as key. */
 			var key string
-			if node.Replicate == "" {
+			if node.Replicate != "" {
 				key = node.Name
 			} else {
 				key = node.Replicate
 			}
 			var types string
 			if key == "" {
-				return score
+				log.Fatalf("key is null")
 			}
 			if _, ok := related[key]; ok {
 				types = related[key]
@@ -719,7 +706,8 @@ func clusterManagerGetAntiAffinityScore(ipNodes []*clusterManagerNodeArray, ipCo
 			if node.Replicate != "" {
 				types += "s"
 			} else {
-				types += "m"
+				s := fmt.Sprintf("m%s", types)
+				types = s
 			}
 			related[key] = types
 		}
@@ -744,32 +732,30 @@ func clusterManagerGetAntiAffinityScore(ipNodes []*clusterManagerNodeArray, ipCo
 					continue
 				}
 				if !intToBool(strings.Compare(n.Replicate, name)) && !intToBool(strings.Compare(n.Ip, ip)) {
-					offendingPIdx++
-					offendingP[offendingPIdx] = n
-					*offendingLen++
+					offendingP = append(*offending, n)
+					if *offendingLen != 0 {
+						*offendingLen++
+					}
 					break
 				}
 			}
 		}
 	}
+	log.Debugf("offendingP, %d", len(offendingP))
 	return score
 }
 
 /* clusterManagerNodeArrayShift Shift array->nodes and store the shifted node into 'nodeptr'. */
-func clusterManagerNodeArrayShift(array *clusterManagerNodeArray) (nodePtr []*ClusterManagerNode) {
-	if array.Len > 0 {
-		/* If the first node to be shifted is not NULL, decrement count. */
-		if array.Nodes != nil {
-			array.Count--
-		}
-		/* Store the first node to be shifted into 'nodeptr'. */
-		nodePtr = array.Nodes
-		/* Shift the nodes array and decrement length. */
-		// array.NodesOffset++
-		array.Len--
-		array.NodesOffset++
+func clusterManagerNodeArrayShift(array *clusterManagerNodeArray, nodePtr **ClusterManagerNode) {
+	if array.Len <= 0 {
+		log.Fatalf("array len < 0")
 	}
-	return
+	if array.Nodes != nil {
+		array.Count--
+	}
+	*nodePtr = array.Nodes[0]
+	array.Nodes = array.Nodes[1:]
+	array.Len--
 }
 
 func clusterManagerNodeArrayInit(array *clusterManagerNodeArray, allocLen int) {
@@ -785,14 +771,18 @@ func clusterManagerNodeArrayInit(array *clusterManagerNodeArray, allocLen int) {
 
 func clusterManagerNodeArrayAdd(array *clusterManagerNodeArray, node *ClusterManagerNode) {
 	//count := array.Count
-	if array.Len > 0 {
-		if node != nil {
-			if array.Count < array.Len {
-				array.Nodes[array.Count] = node
-				array.Count++
-			}
-		}
+	if array.Len <= 0 {
+		log.Fatalf("array len is %d", array.Len)
 	}
+	if node == nil {
+		log.Fatalf("array node is nil")
+	}
+	if array.Count >= array.Len {
+		log.Fatalf("array count > array len")
+	}
+	array.Nodes[array.Count] = node
+	array.Count++
+
 	return
 }
 func clusterManagerMastersCount(nodes, replicas int) int {

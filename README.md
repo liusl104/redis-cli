@@ -36,6 +36,7 @@ Cluster Manager Commands:
                    --cluster-timeout <arg>
                    --cluster-pipeline <arg>
                    --cluster-replace
+                   --cluster-move-thread <arg>
   --rebalance      host:port
                    --cluster-weight <node1=w1...nodeN=wN>
                    --cluster-use-empty-masters
@@ -44,6 +45,7 @@ Cluster Manager Commands:
                    --cluster-pipeline <arg>
                    --cluster-threshold <arg>
                    --cluster-replace
+                   --cluster-move-thread <arg>
   --add-node       new_host:new_port 
                    --exist-node existing_host:existing_port
                    --cluster-slave
@@ -79,7 +81,11 @@ Cluster Manager Options:
                      (if both are used, this argument takes precedence).
   --user <username>  Used to send ACL style 'AUTH username pass'. Needs -a.
   --pass <password>  Alias of -a for consistency with the new --user option.
-
+  --no-auth-warning  Don't show warning message when using password on command
+                     line interface.
+  --askpass          Force user to input password with mask from STDIN.
+                     If this argument is used, '-a' and REDISCLI_AUTH
+                     environment variable will be ignored.
 ```
 
 

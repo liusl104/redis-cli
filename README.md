@@ -104,7 +104,7 @@ Cluster Manager Options:
 [Redis Source Codes](https://github.com/redis/redis/tree/6.2)
 ## Development stack
 
-**Development Version:** go 1.19
+**Development Version:** go 1.21
 
 
 

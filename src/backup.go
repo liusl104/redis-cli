@@ -561,7 +561,7 @@ func getRDB(node *ClusterManagerNode) {
 
 	err = sendSync(repl)
 	if err != nil {
-		clusterManagerLogFatalf("Fail to fsync '%s': %s", fileName, err.Error())
+		clusterManagerLogErr("Fail to fsync '%s': %s", fileName, err.Error())
 	}
 }
 

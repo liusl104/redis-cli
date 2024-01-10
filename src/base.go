@@ -3,6 +3,7 @@ package redis_cli
 import (
 	"flag"
 	"fmt"
+	"github.com/fatih/color"
 	"github.com/gomodule/redigo/redis"
 	"github.com/siddontang/go-log/log"
 	"os"
@@ -47,42 +48,6 @@ const (
 	ClusterJoinCheckAfter                          = 20
 	RdbEofMarkSize                                 = 40
 	// UllongMax                                      = 18446744073709551615
-)
-
-// 前景 背景 颜色
-// ---------------------------------------
-// 30  40  黑色
-// 31  41  红色
-// 32  42  绿色
-// 33  43  黄色
-// 34  44  蓝色
-// 35  45  紫红色
-// 36  46  青蓝色
-// 37  47  白色
-//
-// 代码 意义
-// -------------------------
-//
-//	0  终端默认设置
-//	1  高亮显示
-//	4  使用下划线
-//	5  闪烁
-//	7  反白显示
-//	8  不可见
-//
-// 配置、终端默认设置 conf := 0
-// 背景色、终端默认设置 bg := 0
-// 前景色、红色 text := 31
-const (
-	// TextBlack 定义字体颜色
-	TextBlack = iota + 30
-	TextRed
-	TextGreen
-	TextYellow
-	TextBlue
-	TextMagenta
-	TextCyan
-	TextWhite
 )
 
 var GitHash string
@@ -182,50 +147,6 @@ type RedisGo struct {
 	Conn redis.Conn
 }
 
-func Black(msg string, a ...interface{}) {
-	fmt.Printf(SetColor(0, 0, TextBlack, msg, a...))
-	fmt.Printf("\n")
-}
-
-func Red(msg string, a ...interface{}) {
-	fmt.Printf(SetColor(0, 0, TextRed, msg, a...))
-	fmt.Printf("\n")
-}
-
-func Green(msg string, a ...interface{}) {
-	fmt.Printf(SetColor(0, 0, TextGreen, msg, a...))
-	fmt.Printf("\n")
-}
-
-func Yellow(msg string, a ...interface{}) {
-	fmt.Printf(SetColor(0, 0, TextYellow, msg, a...))
-	fmt.Printf("\n")
-}
-
-func Blue(msg string, a ...interface{}) {
-	fmt.Printf(SetColor(0, 0, TextBlue, msg, a...))
-	fmt.Printf("\n")
-}
-
-func Magenta(msg string, a ...interface{}) {
-	fmt.Printf(SetColor(0, 0, TextMagenta, msg, a...))
-	fmt.Printf("\n")
-}
-
-func Cyan(msg string, a ...interface{}) {
-	fmt.Printf(SetColor(0, 0, TextCyan, msg, a...))
-	fmt.Printf("\n")
-}
-
-func White(msg string, a ...interface{}) {
-	fmt.Printf(SetColor(0, 0, TextWhite, msg, a...))
-	fmt.Printf("\n")
-}
-
-func SetColor(conf, bg, text int, msg string, args ...interface{}) string {
-	return fmt.Sprintf("%c[%d;%d;%dm%s%c[0m", 0x1B, conf, bg, text, fmt.Sprintf(msg, args...), 0x1B)
-}
-
 type ClusterManagerNode struct {
 	Context        *RedisGo
 	Name           string
@@ -294,7 +215,7 @@ func (c *clusterManagerCommand) init(args *Usage) {
 	}
 	if args.User != "" {
 		if args.Password == "" {
-			clusterManagerLogFatalf("password cannot be empty")
+			clusterManagerLogErr("password cannot be empty")
 		}
 	}
 	c.timeout = ClusterManagerMigrateTimeout
@@ -666,7 +587,7 @@ func ParseOptions(args []string) {
 		clusterManagerCommandSetTimeout(cm)
 	case cm.DelNode != "":
 		if cm.NodeID == "" {
-			clusterManagerLogFatalf("Unknown --cluster subcommand")
+			clusterManagerLogErr("Unknown --cluster subcommand")
 		}
 		clusterManagerCommandDeleteNode(cm)
 	case cm.AddNode != "":
@@ -705,9 +626,8 @@ func clusterManagerLogInfo(msg string, args ...interface{}) {
 // clusterManagerLogErr 1 debug 2 info 3 war 4 error 5 fatalf
 func clusterManagerLogErr(msg string, args ...interface{}) {
 	if !intToBool(config.logLevel) {
-		/*fmt.Printf(msg, args...)
-		fmt.Printf("\n")*/
-		Red(msg, args...)
+		color.Red(msg, args...)
+		os.Exit(1)
 	} else {
 		log.Errorf(msg, args...)
 	}
@@ -716,9 +636,7 @@ func clusterManagerLogErr(msg string, args ...interface{}) {
 // clusterManagerLogWarn 1 debug 2 info 3 war 4 error 5 fatalf
 func clusterManagerLogWarn(msg string, args ...interface{}) {
 	if !intToBool(config.logLevel) {
-		Yellow(msg, args...)
-		/*fmt.Printf(msg, args...)
-		fmt.Printf("\n")*/
+		color.Yellow(msg, args...)
 	} else {
 		log.Warnf(msg, args...)
 	}
@@ -729,20 +647,8 @@ func clusterManagerLogOk(msg string, args ...interface{}) {
 	if !intToBool(config.logLevel) {
 		/*fmt.Printf(msg, args...)
 		fmt.Printf("\n")*/
-		Green(msg, args...)
+		color.Green(msg, args...)
 	} else {
 		log.Debugf(msg, args...)
-	}
-}
-
-// clusterManagerLogFatalf 1 debug 2 info 3 war 4 error 5 fatalf
-func clusterManagerLogFatalf(msg string, args ...interface{}) {
-	if !intToBool(config.logLevel) {
-		/*fmt.Printf(msg, args...)
-		fmt.Printf("\n")*/
-		Red(msg, args...)
-		os.Exit(1)
-	} else {
-		log.Fatalf(msg, args...)
 	}
 }

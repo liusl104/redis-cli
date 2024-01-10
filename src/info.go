@@ -103,22 +103,22 @@ func invalidFriend(friend *ClusterManagerNode) error {
 func getClusterHostFromCmdArgs(argc string, ip *string, port *int) {
 	var err error
 	if len(strings.Split(argc, ":")) != 2 {
-		clusterManagerLogFatalf(ClusterManagerInvalidHostArg)
+		clusterManagerLogErr(ClusterManagerInvalidHostArg)
 	}
 	*ip = strings.Split(argc, ":")[0]
 	address := net.ParseIP(*ip)
 	if address == nil {
-		clusterManagerLogFatalf(ClusterManagerInvalidHostArg)
+		clusterManagerLogErr(ClusterManagerInvalidHostArg)
 	}
 	if strings.Split(argc, ":")[1] == "" {
-		clusterManagerLogFatalf(ClusterManagerInvalidHostArg)
+		clusterManagerLogErr(ClusterManagerInvalidHostArg)
 	}
 	*port, err = strconv.Atoi(strings.Split(argc, ":")[1])
 	if err != nil {
-		clusterManagerLogFatalf(ClusterManagerInvalidHostArg)
+		clusterManagerLogErr(ClusterManagerInvalidHostArg)
 	}
 	if *port < 1 || *port > 65535 {
-		clusterManagerLogFatalf(ClusterManagerInvalidHostArg)
+		clusterManagerLogErr(ClusterManagerInvalidHostArg)
 	}
 }
 
@@ -149,7 +149,7 @@ func clusterManagerShowClusterInfo() {
 			}
 			dbsize = redisReply
 			if dbsize < 0 {
-				clusterManagerLogFatalf("Node %s:%d replied with error: %s", node.Ip, node.Port, err.Error())
+				clusterManagerLogErr("Node %s:%d replied with error: %s", node.Ip, node.Port, err.Error())
 			}
 			clusterManagerLogInfo("%s:%d (%s...) -> %d keys | %d slots | %d slaves.", node.Ip, node.Port, name[:8], dbsize, node.SlotsCount, replicas)
 			masters++
@@ -264,7 +264,7 @@ func clusterManagerNodeLoadInfo(node *ClusterManagerNode, opt int) error {
 			}
 		} else {
 			if addr == "" {
-				clusterManagerLogFatalf("Error: invalid CLUSTER NODES reply")
+				clusterManagerLogErr("Error: invalid CLUSTER NODES reply")
 			}
 			c := strings.Split(addr, "@")
 			if len(c) != 2 {
@@ -380,9 +380,9 @@ func clusterManagerNodeIsCluster(node *ClusterManagerNode) (int, error) {
 
 func clusterManagerPrintNotClusterNodeError(node *ClusterManagerNode, err error) {
 	if err != nil {
-		clusterManagerLogFatalf("[ERR] Node %s:%d is not configured as a cluster node. %s", node.Ip, node.Port, err.Error())
+		clusterManagerLogErr("[ERR] Node %s:%d is not configured as a cluster node. %s", node.Ip, node.Port, err.Error())
 	}
-	clusterManagerLogFatalf("[ERR] Node %s:%d is not configured as a cluster node. ", node.Ip, node.Port)
+	clusterManagerLogErr("[ERR] Node %s:%d is not configured as a cluster node. ", node.Ip, node.Port)
 }
 
 /* clusterManagerGetNodeRedisInfo Call "INFO" redis command on the specified node and return the reply. */

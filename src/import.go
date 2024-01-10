@@ -13,7 +13,7 @@ func clusterManagerCommandImport(argc *Usage) {
 	// var invalidArgsMsg string
 	getClusterHostFromCmdArgs(argc.Import, &ip, &port)
 	if argc.ClusterFrom == "" {
-		clusterManagerLogFatalf("[ERR] Option '--cluster-from' is required for subcommand 'import'.")
+		clusterManagerLogErr("[ERR] Option '--cluster-from' is required for subcommand 'import'.")
 	}
 	getClusterHostFromCmdArgs(argc.ClusterFrom, &srcIp, &srcPort)
 	clusterManagerLogInfo(">>> Importing data from %s:%d to cluster %s:%d", srcIp, srcPort, ip, port)
@@ -27,12 +27,12 @@ func clusterManagerCommandImport(argc *Usage) {
 	}
 	err = clusterManagerCheckCluster(0)
 	if err != nil {
-		clusterManagerLogFatalf("[ERR] %s", err.Error())
+		clusterManagerLogErr("[ERR] %s", err.Error())
 	}
 	var srcCtx redis.Conn
 	srcCtx, err = redisConnect(srcIp, srcPort)
 	if err != nil {
-		clusterManagerLogFatalf("Could not connect to Redis at %s:%d: %s.", srcIp, srcPort, err.Error())
+		clusterManagerLogErr("[ERR] Could not connect to Redis at %s:%d: %s.", srcIp, srcPort, err.Error())
 	}
 	var fromUser string
 	var fromPass string
@@ -44,7 +44,7 @@ func clusterManagerCommandImport(argc *Usage) {
 	var srcReply string
 	srcReply, err = redis.String(srcCtx.Do("INFO"))
 	if err != nil {
-		clusterManagerLogFatalf("Source %s:%d replied with error:\n%s", srcIp, srcPort, err.Error())
+		clusterManagerLogErr("Source %s:%d replied with error:\n%s", srcIp, srcPort, err.Error())
 	}
 	var reply int
 	reply, err = getLongInfoField(&srcReply, "cluster_enabled")

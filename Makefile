@@ -16,7 +16,7 @@ PKG=redis-cli
 GITHASH := $(shell git rev-parse --verify --short HEAD)
 LDFLAGS += -X "$(PKG)/src.GitHash=$(GITHASH)"
 
-all: build linux windows darwin
+all: build
 
 linux:
 	CGO_ENABLED=0 GOOS=linux GOARCH=$(GOARCH) $(GOBUILD)  -ldflags '$(LDFLAGS) -s -w'  -o $(LINUX_BINARY_NAME)  $(MAIN_NAME)

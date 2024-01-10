@@ -28,12 +28,12 @@ func clusterManagerCommandRebalance(argc *Usage) {
 			var w float64
 			var n *ClusterManagerNode
 			if len(strings.Split(p, "=")) != 2 {
-				clusterManagerLogFatalf("--cluster-weight format error : <node1=w1, ...nodeN=wN>")
+				clusterManagerLogErr("--cluster-weight format error : <node1=w1, ...nodeN=wN>")
 			}
 			name = strings.Split(p, "=")[0]
 			w, err = strconv.ParseFloat(strings.Split(p, "=")[1], 64)
 			if err != nil {
-				clusterManagerLogFatalf("--cluster-weight format error : <node1=w1, ...nodeN=wN>")
+				clusterManagerLogErr("--cluster-weight format error : <node1=w1, ...nodeN=wN>")
 			}
 			n = clusterManagerNodeByAbbreviatedName(name)
 			if n == nil {

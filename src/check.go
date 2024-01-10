@@ -58,7 +58,7 @@ func clusterManagerCheckCluster(quiet int) error {
 				i++
 			}
 			errStr += "."
-			clusterManagerLogErr(errStr)
+			clusterManagerLogWarn(errStr)
 		}
 		if n.Importing != nil {
 			if openSlots == nil {
@@ -77,7 +77,7 @@ func clusterManagerCheckCluster(quiet int) error {
 				i++
 			}
 			errStr += "."
-			clusterManagerLogErr(errStr)
+			clusterManagerLogWarn(errStr)
 		}
 
 	}
@@ -95,12 +95,12 @@ func clusterManagerCheckCluster(quiet int) error {
 			i++
 		}
 		errStr += "."
-		clusterManagerLogErr(errStr)
+		clusterManagerLogWarn(errStr)
 		errStr = ""
 		if doFix {
 			/* Fix open slots. */
 			for slot, _ := range openSlots {
-				err := clusterManagerFixOpenSlot(slot)
+				err = clusterManagerFixOpenSlot(slot)
 				if err != nil {
 					break
 				}
@@ -1217,7 +1217,7 @@ func clusterManagerCommandCheck(argc *Usage) {
 	} else if argc.Fix != "" {
 		getClusterHostFromCmdArgs(argc.Fix, &ip, &port)
 	} else {
-		clusterManagerLogFatalf("[ERR] Invalid arguments")
+		clusterManagerLogErr("[ERR] Invalid arguments")
 	}
 
 	node := clusterManagerNewNode(ip, port)
@@ -1229,6 +1229,6 @@ func clusterManagerCommandCheck(argc *Usage) {
 	clusterManagerShowClusterInfo()
 	err = clusterManagerCheckCluster(0)
 	if err != nil {
-		clusterManagerLogFatalf(err.Error())
+		clusterManagerLogErr(err.Error())
 	}
 }

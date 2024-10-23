@@ -89,15 +89,15 @@ func clusterManagerCommandCreate(argc *Usage) {
 	}
 	clusterManagerLogInfo(">>> Performing hash slots allocation on %d nodes...", nodeLen)
 	var interleavedLen, ipCount int
-	interleaved := make([]*ClusterManagerNode, nodeLen)
+	var interleaved = make([]*ClusterManagerNode, nodeLen)
+	var ips = make([]string, nodeLen)
+	var ipNodes = make([]*clusterManagerNodeArray, nodeLen)
 
-	ips := make([]string, nodeLen)
-	ipNodes := make([]*clusterManagerNodeArray, nodeLen)
-	for u := 0; u < nodeLen; u++ {
-		// need init memory alloc
-		interleaved[u] = new(ClusterManagerNode)
-		ipNodes[u] = new(clusterManagerNodeArray)
+	// Init ipNodes
+	for x := 0; x < nodeLen; x++ {
+		ipNodes[x] = new(clusterManagerNodeArray)
 	}
+
 	for _, n := range clusterManager.Nodes {
 		var found int
 		for i = 0; i < ipCount; i++ {
@@ -108,23 +108,22 @@ func clusterManagerCommandCreate(argc *Usage) {
 			}
 		}
 		if !intToBool(found) {
-			ips[ipCount] = n.Ip
+			ips = append(ips, n.Ip)
 			ipCount++
 		}
-		var nodeArray *clusterManagerNodeArray
-		nodeArray = ipNodes[i]
+		nodeArray := ipNodes[i]
 		if nodeArray.Nodes == nil {
 			clusterManagerNodeArrayInit(nodeArray, nodeLen)
 		}
 		clusterManagerNodeArrayAdd(nodeArray, n)
+		ipNodes[i] = nodeArray
 	}
 	for interleavedLen < nodeLen {
 		for i = 0; i < ipCount; i++ {
-			var nodeArray *clusterManagerNodeArray
-			nodeArray = ipNodes[i]
-			if nodeArray.Count > 0 {
+			var node_array *clusterManagerNodeArray = ipNodes[i]
+			if node_array.Count > 0 {
 				var n *ClusterManagerNode
-				clusterManagerNodeArrayShift(nodeArray, &n)
+				n = clusterManagerNodeArrayShift(node_array)
 				interleaved[interleavedLen] = n
 				interleavedLen++
 			}
@@ -132,15 +131,13 @@ func clusterManagerCommandCreate(argc *Usage) {
 	}
 	var masters []*ClusterManagerNode
 	masters = interleaved
-	interleaved = interleaved[mastersCount:]
+	interleaved = interleaved[len(interleaved)%mastersCount:]
 	interleavedLen -= mastersCount
-	var slotsPerNode float64
-	slotsPerNode = float64(ClusterManagerSlots) / float64(mastersCount)
+	slotsPerNode := float64(ClusterManagerSlots) / float64(mastersCount)
 	var first int
 	var cursor float64
 	for i = 0; i < mastersCount; i++ {
-		var master *ClusterManagerNode
-		master = masters[i]
+		var master *ClusterManagerNode = masters[i]
 		// lround 四舍五入
 		var last int
 		last = int(math.Round(cursor + slotsPerNode - 1))
@@ -152,6 +149,7 @@ func clusterManagerCommandCreate(argc *Usage) {
 		}
 		clusterManagerLogInfo("Master[%d] -> Slots %d - %d", i, first, last)
 		master.SlotsCount = 0
+		master.Slots = []int{}
 		for j = first; j <= last; j++ {
 			master.Slots = append(master.Slots, j)
 			master.SlotsCount++
@@ -162,34 +160,30 @@ func clusterManagerCommandCreate(argc *Usage) {
 	}
 	/* Rotating the list sometimes helps to get better initial
 	 * anti-affinity before the optimizer runs. */
-	var firstNode *ClusterManagerNode
-	if len(interleaved) > 0 {
-		firstNode = interleaved[0]
-	}
+	var firstNode *ClusterManagerNode = interleaved[0]
+
 	for i = 0; i < (interleavedLen - 1); i++ {
 		interleaved[i] = interleaved[i+1]
 	}
-	if len(interleaved)-1 > 0 {
-		interleaved[len(interleaved)-1] = firstNode
+	if interleavedLen-1 < 0 {
+		interleaved[0] = firstNode
+	} else {
+		interleaved[interleavedLen-1] = firstNode
 	}
-
-	var assignUnused, availableCount int
-	availableCount = interleavedLen
+	var assignUnused int
+	var availableCount = interleavedLen
 assignReplicas:
 	for i = 0; i < mastersCount; i++ {
-		var master *ClusterManagerNode
-		master = masters[i]
-		var assignedReplicas int
+		var master *ClusterManagerNode = masters[i]
+		var assignedReplicas int = 0
 		for assignedReplicas < replicas {
 			if availableCount == 0 {
 				break
 			}
 			var found, slave *ClusterManagerNode
-			var firstNodeIdx int
-			firstNodeIdx = -1
+			var firstNodeIdx int = -1
 			for j = 0; j < interleavedLen; j++ {
-				var n *ClusterManagerNode
-				n = interleaved[j]
+				var n *ClusterManagerNode = interleaved[j]
 				if n == nil {
 					continue
 				}
@@ -207,7 +201,8 @@ assignReplicas:
 			} else if firstNodeIdx >= 0 {
 				slave = interleaved[firstNodeIdx]
 				interleavedLen -= len(interleaved) - (len(interleaved) + firstNodeIdx)
-				interleaved = interleaved[firstNodeIdx+1:]
+				interleaved = interleaved[:firstNodeIdx+1]
+				// interleaved += firstNodeIdx+1
 			}
 			if slave != nil {
 				assignedReplicas++
@@ -746,16 +741,24 @@ func clusterManagerGetAntiAffinityScore(ipNodes []*clusterManagerNodeArray, ipCo
 }
 
 /* clusterManagerNodeArrayShift Shift array->nodes and store the shifted node into 'nodeptr'. */
-func clusterManagerNodeArrayShift(array *clusterManagerNodeArray, nodePtr **ClusterManagerNode) {
-	if array.Len <= 0 {
-		log.Fatalf("array len < 0")
+func clusterManagerNodeArrayShift(array *clusterManagerNodeArray) (nodePtr *ClusterManagerNode) {
+	if array.Len > 0 {
+		/* If the first node to be shifted is not NULL, decrement count. */
+		if array.Nodes[0] != nil {
+			array.Count--
+		}
+		/* Store the first node to be shifted into 'nodeptr'. */
+		nodePtr = array.Nodes[0]
+		/* Shift the nodes array and decrement length. */
+		// array.NodesOffset++
+		array.Nodes = array.Nodes[1:]
+		array.Len--
+
+	} else {
+		clusterManagerLogErr("Cannot shift from an empty array")
 	}
-	if array.Nodes != nil {
-		array.Count--
-	}
-	*nodePtr = array.Nodes[0]
-	array.Nodes = array.Nodes[1:]
-	array.Len--
+
+	return
 }
 
 func clusterManagerNodeArrayInit(array *clusterManagerNodeArray, allocLen int) {
